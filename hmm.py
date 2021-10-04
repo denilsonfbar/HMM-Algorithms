@@ -1,8 +1,8 @@
 import numpy as np
 
-verbose = True
+verbose = True  # Print the detailed execution log
 
-model = 2
+model = 2       # Selected model 
 
 ## MODEL 1: dishonest casino
 if model == 1:
@@ -56,7 +56,8 @@ emission_probabilities = np.log2(emission_probabilities)
 
 ## VITERBI DECODING
 
-# Receives a sequence and return the most probable path of states
+# Receives a sequence 
+# Return the most probable path of states according selected model
 def viterbi_decoding(sequence):
 
     n_positions = sequence.size
@@ -89,6 +90,7 @@ def viterbi_decoding(sequence):
     best_path = viterbi_paths[np.argmax(viterbi_matrix[:,n_positions-1])]
 
     if verbose:
+        print("\nVITERBI DECODING")
         print("\nViterbi matrix:")
         print (viterbi_matrix)
         print("\nPaths: ")
@@ -99,11 +101,6 @@ def viterbi_decoding(sequence):
     return best_path
 
 
-# Global variables for reuse of matrices
-forward_matrix = []
-backward_matrix = []
-
-
 ## FORWARD
 
 # Receives a sequence and the state of the last position
@@ -111,6 +108,8 @@ backward_matrix = []
 def forward(sequence, state_last_position):
 
     n_positions = sequence.size
+    
+    global forward_matrix
     forward_matrix = np.zeros((n_states,n_positions))
 
     for i in range(n_positions):
@@ -136,6 +135,7 @@ def forward(sequence, state_last_position):
     total_prob = forward_matrix[state_last_position,n_positions-1]
 
     if verbose:
+        print("\nFORWARD ALGORITHM")
         print("\nForward matrix with log base 2 values:")
         print (forward_matrix)
         print("\nForward matrix with real values:")
@@ -153,6 +153,7 @@ def forward(sequence, state_last_position):
 def backward(sequence, state_first_position):
 
     n_positions = sequence.size
+    global backward_matrix 
     backward_matrix = np.zeros((n_states,n_positions+1))
 
     for i in reversed(range(n_positions)):
@@ -183,6 +184,7 @@ def backward(sequence, state_first_position):
     total_prob = backward_matrix[state_first_position,0]
 
     if verbose:
+        print("\nBACKWARD ALGORITHM")
         print("\nBackward matrix with log base 2 values:")
         print (backward_matrix)
         print("\nBackward matrix with real values:")
@@ -193,10 +195,47 @@ def backward(sequence, state_first_position):
     return total_prob
 
 
+## POSTERIOR DECODING
+
+# Receives a sequence 
+# Return the most probable path of states according selected model
+def posterior_decoding(sequence):
+    
+    n_positions = sequence.size
+
+    global posterior_decoding_matrix
+    posterior_decoding_matrix = np.zeros((n_states,n_positions))
+
+    for k in range(n_states):
+        aux = forward_matrix[k,n_positions-1]
+        if k == 0:
+            sequence_probability = aux
+        else:
+            sequence_probability = np.logaddexp2(sequence_probability, aux) 
+
+    for i in range(n_positions):
+        for l in range(n_states):
+            posterior_decoding_matrix[l,i] = forward_matrix[l,i] + backward_matrix[l,i+1] - sequence_probability
+
+    best_path = np.argmax(posterior_decoding_matrix, axis=0)
+    
+    if verbose:
+        print("\nPOSTERIOR DECODING")
+        print("\nPosterior decoding matrix with log base 2 values:")
+        print (posterior_decoding_matrix)
+        print("\nPosterior decoding matrix with real values:")
+        print (np.exp2(posterior_decoding_matrix))
+        print("\nBest path:")
+        print(best_path)
+    
+    return best_path
+
+
 ## TESTING
 
 def experiment(sequence):
-    print("\n---------")
+    print("\n-------------------")
+    print("START OF EXPERIMENT")
     print("\nSequence:")
     print (sequence)
     if model == 1: 
@@ -205,6 +244,7 @@ def experiment(sequence):
     viterbi_decoding(sequence)
     forward(sequence, 0)
     backward(sequence, 0)
+    posterior_decoding(sequence)
 
 
 if model == 1:
